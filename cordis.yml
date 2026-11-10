@@ -1,0 +1,8 @@
+# DSH bundle patch: start the MCP server inside DeepSeek Harness.
+- insert:
+    - id: dsh-task-delegation
+      name: 'dsh-task-delegation-mcp'
+      config:
+        http:
+          host: 127.0.0.1
+          port: 8957
