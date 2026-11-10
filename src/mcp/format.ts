@@ -1,5 +1,5 @@
 import type { DomainError } from '../errors.js'
-import type { TaskRecord, TaskState, TaskSummary } from '../types.js'
+import type { TaskRecord, TaskState, TaskSummary, WaitInfo } from '../types.js'
 import { previewOf, toTaskState } from '../types.js'
 
 export interface QueueInfo {
@@ -24,7 +24,7 @@ export interface ToolErrorResult {
 }
 
 /** Agent-facing content for one task state. */
-export function contentForRecord(record: TaskRecord, queue: QueueInfo = {}): string {
+export function contentForRecord(record: TaskRecord, queue: QueueInfo = {}, wait?: WaitInfo): string {
   switch (record.status) {
     case 'succeeded':
       return record.answer !== undefined && record.answer !== ''
@@ -35,11 +35,13 @@ export function contentForRecord(record: TaskRecord, queue: QueueInfo = {}): str
     case 'queued': {
       const behind = queue.blockedBy === undefined ? '' : ` behind ${queue.blockedBy}`
       const position = queue.queuePosition === undefined ? '' : ` (position ${queue.queuePosition})`
-      return `Task ${record.taskId} is queued${behind}${position}. Call dsh_task_wait or dsh_task_get.`
+      const note = timeoutNote(wait)
+      return `Task ${record.taskId} is queued${behind}${position}.${note} Call dsh_task_wait or dsh_task_get.`
     }
     case 'running': {
       const progress = record.progress === undefined ? 'starting' : record.progress
-      return `Task ${record.taskId} is still running: ${progress}. Call dsh_task_wait again.`
+      const note = timeoutNote(wait)
+      return `Task ${record.taskId} is still running: ${progress}.${note} Call dsh_task_wait again.`
     }
     case 'failed': {
       const message = (record.error?.message ?? 'the agent reported a failure').replace(/[.!?]+$/, '')
@@ -64,11 +66,19 @@ export function stateForRecord(record: TaskRecord, queue: QueueInfo = {}): Recor
   return toTaskState(record, queue) as unknown as Record<string, unknown>
 }
 
-export function success(record: TaskRecord, queue: QueueInfo = {}): ToolSuccess {
+export function success(record: TaskRecord, queue: QueueInfo = {}, wait?: WaitInfo): ToolSuccess {
   return {
-    content: [{ type: 'text', text: contentForRecord(record, queue) }],
+    content: [{ type: 'text', text: contentForRecord(record, queue, wait) }],
     structuredContent: stateForRecord(record, queue),
   }
+}
+
+function timeoutNote(wait: WaitInfo | undefined): string {
+  if (wait?.timedOut !== true) return ''
+  const capped = wait.capped
+    ? ` (requested ${wait.requestedTimeoutMs} ms; capped by interactions.maxWaitMs=${wait.maxWaitMs})`
+    : ''
+  return ` Wait timed out after ${wait.effectiveTimeoutMs} ms${capped}.`
 }
 
 /** Map every domain error to a visible hint plus a small machine payload. */

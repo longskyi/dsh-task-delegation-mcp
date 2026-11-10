@@ -73,6 +73,8 @@ release work that remains.
 - `structuredContent` is minimal machine state: `taskId`, `status`, `sessionId`,
   `queuePosition`, `blockedBy`, `progress`, `pending`, or `error`.
 - `queued`, `running`, and `waiting` are normal states, not `isError` failures.
+- A wait timeout is a normal result, not an error. Its content names the effective wait and,
+  when the requested value exceeded `interactions.maxWaitMs`, the configured cap.
 - An invalid approval/answer never mutates the pending request.
 
 Successful call:
@@ -211,7 +213,7 @@ interface Config {
     mode?: 'remote' | 'deny' | 'host' // default: remote on loopback, deny elsewhere
     approvalTimeoutMs?: number         // default: 300_000
     questionTimeoutMs?: number         // default: 300_000
-    maxWaitMs?: number                 // default: 60_000
+    maxWaitMs?: number                 // default: 1_800_000
   }
   workspaceRoots?: string[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
@@ -245,7 +247,7 @@ npm test            # vitest
 npm run check:lib   # rebuild and fail if committed lib/ is stale
 ```
 
-73 tests cover config validation, the task state machine, queue/locks, approval and question
+75 tests cover config validation, the task state machine, queue/locks, approval and question
 routing, persistence/recovery, trace formatting and pagination, MCP tool results, HTTP
 auth/origin/body limits, and a fake-DSH adapter. See
 [docs/spec/06-operations.md](docs/spec/06-operations.md) for the full matrix.

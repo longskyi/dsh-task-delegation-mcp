@@ -1,7 +1,7 @@
 import type { ResolvedConfig } from '../config.js';
 import type { Logger } from '../logger.js';
 import type { AnswerItem, TaskAdapter } from '../agents/types.js';
-import type { TaskRecord, TaskState, TaskStatus, TaskSummary, TraceInclude, TraceState } from '../types.js';
+import type { TaskRecord, TaskState, TaskStatus, TaskSummary, TraceInclude, TraceState, WaitInfo } from '../types.js';
 import { TaskStore } from './store.js';
 export interface SubmitInput {
     task: string;
@@ -13,6 +13,9 @@ export interface SubmitInput {
 }
 export interface WaitOptions {
     timeoutMs?: number;
+}
+export interface WaitOutcome extends WaitInfo {
+    record: TaskRecord;
 }
 export interface TraceOptions {
     afterSeq?: number;
@@ -51,6 +54,7 @@ export declare class TaskManager {
     get(taskId: string): TaskRecord;
     stateOf(taskId: string): TaskState;
     wait(taskId: string, options?: WaitOptions): Promise<TaskRecord>;
+    waitOutcome(taskId: string, options?: WaitOptions): Promise<WaitOutcome>;
     cancel(taskId: string): Promise<CancelResult>;
     approve(taskId: string, requestId: string, decision: 'allow-once' | 'reject'): Promise<{
         record: TaskRecord;

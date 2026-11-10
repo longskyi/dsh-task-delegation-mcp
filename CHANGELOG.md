@@ -25,6 +25,8 @@ Core implementation of the task-delegation MCP server.
 - `dsh_task_approve` and `dsh_task_answer`; invalid/wrong/expired decisions do not mutate
   the pending request.
 - `interactions.mode`: `remote`, `deny`, and experimental `host`.
+- `interactions.maxWaitMs` defaults to 30 minutes; a wait timeout reports its effective
+  duration and whether the requested duration was capped.
 - Approval/question TTLs and cancellation cleanup.
 
 ### Persistence and trace
@@ -43,7 +45,7 @@ Core implementation of the task-delegation MCP server.
 - `content`/`structuredContent` contract: answer or actionable status in content, minimal
   state in structuredContent.
 - Full configuration, startup validation, workspace roots, graceful shutdown.
-- 73 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
+- 75 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
 
 ### Build
 

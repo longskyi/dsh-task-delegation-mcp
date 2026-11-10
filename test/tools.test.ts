@@ -70,6 +70,25 @@ describe('MCP tools', () => {
     expect(text(got)).toBe(answer)
   })
 
+  it('reports a wait timeout and any cap in content', async () => {
+    const { h, client } = await setup({
+      agent: { defaultSyncWaitMs: 10 },
+      interactions: { maxWaitMs: 20 },
+    })
+    const submitted = await client.callTool({ name: 'dsh_task_submit', arguments: { task: 'slow' } })
+    const taskId = structured<{ taskId: string }>(submitted).taskId
+    await h.adapter.waitForRun(taskId)
+    const waited = await client.callTool({
+      name: 'dsh_task_wait',
+      arguments: { taskId, timeoutMs: 300_000 },
+    })
+    expect((waited as { isError?: boolean }).isError).not.toBe(true)
+    expect(text(waited)).toContain('Wait timed out after 20 ms')
+    expect(text(waited)).toContain('requested 300000 ms')
+    expect(text(waited)).toContain('interactions.maxWaitMs=20')
+    expect(structured(waited)).toMatchObject({ taskId, status: 'running' })
+  })
+
   it('runs a one-shot task and always exposes the taskId', async () => {
     const { h, client } = await setup()
     h.adapter.autoAnswer = 'Linux'

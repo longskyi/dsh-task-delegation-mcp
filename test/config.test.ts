@@ -21,7 +21,7 @@ describe('resolveConfig', () => {
     expect(config.interactions.mode).toBe('remote')
     expect(config.interactions.approvalTimeoutMs).toBe(300_000)
     expect(config.interactions.questionTimeoutMs).toBe(300_000)
-    expect(config.interactions.maxWaitMs).toBe(60_000)
+    expect(config.interactions.maxWaitMs).toBe(1_800_000)
     expect(config.workspaceRoots).toEqual([])
     expect(config.logLevel).toBe('info')
   })

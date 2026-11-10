@@ -157,7 +157,7 @@ export function resolveConfig(input: Config = {}): ResolvedConfig {
       300_000,
       'interactions.questionTimeoutMs',
     ),
-    maxWaitMs: positiveInt(interactionsInput.maxWaitMs, 60_000, 'interactions.maxWaitMs'),
+    maxWaitMs: positiveInt(interactionsInput.maxWaitMs, 1_800_000, 'interactions.maxWaitMs'),
   }
 
   const workspaceRoots = input.workspaceRoots ?? []

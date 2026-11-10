@@ -48,6 +48,24 @@ describe('task manager', () => {
     expect(snapshot.status).toBe('running')
   })
 
+  it('reports a capped wait and its effective timeout', async () => {
+    const h = await setup({
+      agent: { defaultSyncWaitMs: 10 },
+      interactions: { maxWaitMs: 20 },
+    })
+    const record = await h.manager.submit({ task: 'slow' })
+    await h.adapter.waitForRun(record.taskId)
+    const outcome = await h.manager.waitOutcome(record.taskId, { timeoutMs: 300_000 })
+    expect(outcome.record.status).toBe('running')
+    expect(outcome).toMatchObject({
+      timedOut: true,
+      requestedTimeoutMs: 300_000,
+      effectiveTimeoutMs: 20,
+      capped: true,
+      maxWaitMs: 20,
+    })
+  })
+
   it('serializes tasks on the same pool key and reports blockedBy', async () => {
     const h = await setup({ agent: { maxAgents: 4, maxConcurrent: 1, defaultTimeoutMs: 10_000 } })
     const first = await h.manager.submit({ task: 'first' })

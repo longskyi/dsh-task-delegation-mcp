@@ -33,7 +33,7 @@ interface Config {
     mode?: 'remote' | 'deny' | 'host'  // default: remote on loopback, deny on non-loopback
     approvalTimeoutMs?: number         // default: 300_000
     questionTimeoutMs?: number         // default: 300_000
-    maxWaitMs?: number                 // default: 60_000
+    maxWaitMs?: number                 // default: 1_800_000
   }
   workspaceRoots?: string[]
   logLevel?: 'debug' | 'info' | 'warn' | 'error'

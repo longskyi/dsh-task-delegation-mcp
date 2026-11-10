@@ -85,6 +85,14 @@ export interface TaskRecord {
     toSeq?: number;
     decisions?: DecisionAudit[];
 }
+/** Why and how long a wait call actually waited. */
+export interface WaitInfo {
+    timedOut: boolean;
+    requestedTimeoutMs: number;
+    effectiveTimeoutMs: number;
+    capped: boolean;
+    maxWaitMs: number;
+}
 export declare function isTerminal(status: TaskStatus): boolean;
 export declare function isSettled(status: TaskStatus): boolean;
 export declare function toTaskState(record: TaskRecord, queue?: {

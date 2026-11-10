@@ -11,7 +11,7 @@ const timeoutMs = z
   .int()
   .nonnegative()
   .optional()
-  .describe('Maximum wait in milliseconds. Defaults to the plugin setting; capped by interactions.maxWaitMs.')
+  .describe('Maximum wait in milliseconds. Defaults to the plugin setting; capped by interactions.maxWaitMs (default 30 minutes). A timeout result says whether it was capped.')
 
 const submitFields = {
   task: z.string().min(1).describe('The task for the DSH agent. Be specific about the goal and constraints.'),
@@ -75,8 +75,8 @@ export function registerTaskTools(server: McpServer, manager: TaskManager): void
     },
     async ({ taskId: id, timeoutMs: timeout }) => {
       try {
-        const record = await manager.wait(id, { timeoutMs: timeout })
-        return success(record, manager.queueInfo(id))
+        const outcome = await manager.waitOutcome(id, { timeoutMs: timeout })
+        return success(outcome.record, manager.queueInfo(outcome.record.taskId), outcome)
       } catch (error) {
         return failure(asDomainError(error))
       }
@@ -94,8 +94,8 @@ export function registerTaskTools(server: McpServer, manager: TaskManager): void
     async (args) => {
       try {
         const record = await manager.submit(args)
-        const waited = await manager.wait(record.taskId, { timeoutMs: args.timeoutMs })
-        return success(waited, manager.queueInfo(waited.taskId))
+        const outcome = await manager.waitOutcome(record.taskId, { timeoutMs: args.timeoutMs })
+        return success(outcome.record, manager.queueInfo(outcome.record.taskId), outcome)
       } catch (error) {
         return failure(asDomainError(error))
       }

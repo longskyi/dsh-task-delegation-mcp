@@ -159,13 +159,16 @@ Description: "Wait until a task finishes or needs approval/answer, or the timeou
 ```ts
 {
   taskId: string
-  timeoutMs?: number   // default: agent.defaultSyncWaitMs; capped by interactions.maxWaitMs
+  timeoutMs?: number   // default: agent.defaultSyncWaitMs; capped by interactions.maxWaitMs (default 1_800_000)
 }
 ```
 
 - Returns early on `succeeded`, `failed`, `canceled`, `interrupted`, or `waiting`.
 - On timeout returns the current `running`/`queued` state; it is not an error.
-- `content` on timeout: `Task <taskId> is still running: <progress>. Call dsh_task_wait again.`
+- `content` on timeout: `Task <taskId> is still running: <progress>. Wait timed out after
+  <effective> ms. Call dsh_task_wait again.`
+- When the requested wait exceeded `interactions.maxWaitMs`, content also names the
+  requested value and the cap, so a shortened wait is never silent.
 
 ### 4.4 `dsh_agent_run`
 

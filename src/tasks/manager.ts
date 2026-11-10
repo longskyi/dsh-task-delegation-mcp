@@ -24,6 +24,7 @@ import type {
   TaskSummary,
   TraceInclude,
   TraceState,
+  WaitInfo,
 } from '../types.js'
 import { isSettled, isTerminal, previewOf, toTaskState } from '../types.js'
 import { TaskStore } from './store.js'
@@ -39,6 +40,10 @@ export interface SubmitInput {
 
 export interface WaitOptions {
   timeoutMs?: number
+}
+
+export interface WaitOutcome extends WaitInfo {
+  record: TaskRecord
 }
 
 export interface TraceOptions {
@@ -230,14 +235,27 @@ export class TaskManager {
   }
 
   async wait(taskId: string, options: WaitOptions = {}): Promise<TaskRecord> {
+    return (await this.waitOutcome(taskId, options)).record
+  }
+
+  async waitOutcome(taskId: string, options: WaitOptions = {}): Promise<WaitOutcome> {
     const record = this.requireTask(taskId)
-    if (isSettled(record.status)) return record
     const requested = options.timeoutMs ?? this.config.agent.defaultSyncWaitMs
     if (!Number.isFinite(requested) || requested < 0) {
       throw new DomainError('invalid_request', 'timeoutMs must be a non-negative number')
     }
-    const timeoutMs = Math.min(Math.floor(requested), this.config.interactions.maxWaitMs)
-    if (timeoutMs === 0) return record
+    const requestedTimeoutMs = Math.floor(requested)
+    const maxWaitMs = this.config.interactions.maxWaitMs
+    const effectiveTimeoutMs = Math.min(requestedTimeoutMs, maxWaitMs)
+    const wait: WaitInfo = {
+      timedOut: false,
+      requestedTimeoutMs,
+      effectiveTimeoutMs,
+      capped: effectiveTimeoutMs < requestedTimeoutMs,
+      maxWaitMs,
+    }
+    if (isSettled(record.status)) return { ...wait, record }
+    if (effectiveTimeoutMs === 0) return { ...wait, timedOut: true, record }
 
     await new Promise<void>((resolveWait) => {
       const set = this.waiters.get(taskId) ?? new Set<() => void>()
@@ -254,12 +272,13 @@ export class TaskManager {
       const wake = (): void => {
         if (isSettled(this.requireTask(taskId).status)) finish()
       }
-      const timer = setTimeout(finish, timeoutMs)
+      const timer = setTimeout(finish, effectiveTimeoutMs)
       timer.unref()
       set.add(wake)
       if (isSettled(this.requireTask(taskId).status)) finish()
     })
-    return this.requireTask(taskId)
+    const current = this.requireTask(taskId)
+    return { ...wait, timedOut: !isSettled(current.status), record: current }
   }
 
   async cancel(taskId: string): Promise<CancelResult> {
