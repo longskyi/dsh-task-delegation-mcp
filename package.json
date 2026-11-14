@@ -17,6 +17,8 @@
     "lib",
     "cordis.yml",
     "README.md",
+    "SECURITY.md",
+    "docs",
     "LICENSE"
   ],
   "scripts": {
@@ -40,6 +42,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/longskyi/dsh-task-delegation-mcp.git"
+  },
+  "homepage": "https://github.com/longskyi/dsh-task-delegation-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/longskyi/dsh-task-delegation-mcp/issues"
   },
   "dsh": {
     "bundle": {

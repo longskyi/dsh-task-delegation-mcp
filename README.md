@@ -312,7 +312,8 @@ This server can execute code with the DSH host user's permissions. Keep it bound
 loopback. If another process or user can reach the port, set a long random
 `http.authToken` and do not expose the port to the internet. Approval decisions are
 audited. The plugin itself never auto-approves; the opt-in Auto review preset may allow
-a reviewed action. See [docs/security.md](docs/security.md).
+a reviewed action. See [SECURITY.md](SECURITY.md) for reporting and
+[docs/security.md](docs/security.md) for the threat model.
 
 ## License
 
