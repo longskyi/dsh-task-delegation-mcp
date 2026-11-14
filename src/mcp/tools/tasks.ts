@@ -22,6 +22,13 @@ const submitFields = {
     .enum(['reuse', 'fresh'])
     .optional()
     .describe('reuse: reuse an idle session for the same cwd/preset/model; fresh: start a new conversation.'),
+  permissionPreset: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      'Optional DSH permission preset for this task, such as "auto" for Auto review. The operator must allow it in agent.allowedPermissionPresets.',
+    ),
   title: z.string().optional().describe('Optional title for a newly created DSH session.'),
 }
 

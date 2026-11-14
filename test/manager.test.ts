@@ -66,6 +66,18 @@ describe('task manager', () => {
     })
   })
 
+  it('enforces the caller permission preset allowlist', async () => {
+    const h = await setup({ agent: { allowedPermissionPresets: ['auto'] } })
+    await expect(
+      h.manager.submit({ task: 'wider', permissionPreset: 'danger-full-access' }),
+    ).rejects.toMatchObject({ code: 'permission_denied' })
+
+    const record = await h.manager.submit({ task: 'reviewed', permissionPreset: 'auto' })
+    expect(record.permissionPreset).toBe('auto')
+    expect(h.manager.stateOf(record.taskId).permissionPreset).toBe('auto')
+    await h.adapter.waitForRun(record.taskId)
+  })
+
   it('serializes tasks on the same pool key and reports blockedBy', async () => {
     const h = await setup({ agent: { maxAgents: 4, maxConcurrent: 1, defaultTimeoutMs: 10_000 } })
     const first = await h.manager.submit({ task: 'first' })

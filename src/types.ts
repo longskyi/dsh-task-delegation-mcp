@@ -49,6 +49,7 @@ export interface TaskState {
   taskId: string
   status: TaskStatus
   sessionId?: string
+  permissionPreset?: string
   queuePosition?: number
   blockedBy?: string
   progress?: string
@@ -91,6 +92,7 @@ export interface TaskRecord {
   cwd: string
   sessionMode: 'reuse' | 'fresh'
   preset: string
+  permissionPreset?: string
   provider?: string
   model?: string
   sessionId?: string
@@ -130,6 +132,7 @@ export function toTaskState(
 ): TaskState {
   const state: TaskState = { taskId: record.taskId, status: record.status }
   if (record.sessionId !== undefined) state.sessionId = record.sessionId
+  if (record.permissionPreset !== undefined) state.permissionPreset = record.permissionPreset
   if (queue?.queuePosition !== undefined) state.queuePosition = queue.queuePosition
   if (queue?.blockedBy !== undefined) state.blockedBy = queue.blockedBy
   if (record.progress !== undefined) state.progress = record.progress

@@ -59,7 +59,8 @@ model`, or creates one. `sessionMode: 'fresh'` is the explicit isolation escape 
 ### 5.4 Interactions are explicit
 
 Approvals and user questions are first-class states. The caller is told which tool to call
-and which `requestId` to use. Nothing is auto-approved.
+and which `requestId` to use. The bridge never auto-approves; an operator can opt in to
+DSH Auto review, which may allow a reviewed action.
 
 ### 5.5 Bounded default outputs, explicit detail
 

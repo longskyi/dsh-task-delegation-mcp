@@ -60,7 +60,7 @@ rejected with `session_busy`. It reports `blockedBy` and `queuePosition`.
 - If the blocking task is waiting for approval/question, the new task waits behind it.
 - The caller can cancel the blocking task, cancel the queued task, or wait.
 - To run in parallel in the same workspace, the caller must use
-  `sessionMode: 'fresh'` or a different `cwd` / `preset` / `model`.
+  `sessionMode: 'fresh'` or a different `cwd` / `preset` / `permissionPreset` / `model`.
 - An explicit `sessionId` always serializes behind that session; there is no parallel
   execution on one session.
 
@@ -88,7 +88,7 @@ the task ends. A live session owned by the UI/another plugin is not disposed.
 Use the pool key:
 
 ```text
-cwd (realpath) + preset + provider + model + reasoningEffort
+cwd (realpath) + preset + permissionPreset + provider + model + reasoningEffort
 ```
 
 - `sessionMode: 'reuse'` (default): use an idle pooled session for the key, or create one.
@@ -246,6 +246,7 @@ interface TaskRecord {
   cwd: string
   sessionMode: 'reuse' | 'fresh'
   preset: string
+  permissionPreset?: string
   provider?: string
   model?: string
   sessionId?: string

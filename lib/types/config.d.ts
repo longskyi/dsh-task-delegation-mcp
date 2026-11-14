@@ -16,6 +16,10 @@ export interface HttpConfig {
 export interface AgentConfig {
     /** DSH agent preset mounted for delegated sessions. */
     preset: string;
+    /** DSH permission preset applied to delegated sessions; empty inherits. */
+    permissionPreset: string;
+    /** Permission presets a task caller may request; empty disables caller selection. */
+    allowedPermissionPresets: string[];
     /** Provider override; empty follows DSH's default model selection. */
     provider: string;
     /** Model override; empty follows DSH's default model selection. */

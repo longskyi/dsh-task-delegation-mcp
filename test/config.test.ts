@@ -9,6 +9,8 @@ describe('resolveConfig', () => {
     expect(config.http.authToken).toBe('')
     expect(config.http.maxBodyBytes).toBe(1024 * 1024)
     expect(config.agent.preset).toBe('standard')
+    expect(config.agent.permissionPreset).toBe('')
+    expect(config.agent.allowedPermissionPresets).toEqual([])
     expect(config.agent.maxAgents).toBe(8)
     expect(config.agent.maxConcurrent).toBe(4)
     expect(config.agent.defaultTimeoutMs).toBe(600_000)
@@ -62,6 +64,16 @@ describe('resolveConfig', () => {
     expect(() => resolveConfig({ agent: { maxConcurrent: 0 } })).toThrow(/maxConcurrent/)
     expect(() => resolveConfig({ agent: { defaultTimeoutMs: 0 } })).toThrow(/defaultTimeoutMs/)
     expect(() => resolveConfig({ tasks: { maxQueue: 0 } })).toThrow(/maxQueue/)
+  })
+
+  it('normalizes caller permission preset allowlists', () => {
+    const config = resolveConfig({
+      agent: { allowedPermissionPresets: [' auto ', 'auto', 'workspace-write'] },
+    })
+    expect(config.agent.allowedPermissionPresets).toEqual(['auto', 'workspace-write'])
+    expect(() =>
+      resolveConfig({ agent: { allowedPermissionPresets: [''] } }),
+    ).toThrow(/allowedPermissionPresets/)
   })
 
   it('rejects maxConcurrent greater than maxAgents', () => {

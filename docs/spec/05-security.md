@@ -10,7 +10,7 @@ writes. Treat it as a **remote-execution interface**, not a read-only API.
 | Process on the same host without the token | Can reach `127.0.0.1:8957` | Bearer token; fail closed |
 | Process with the token | Can delegate code execution | Token is the trust boundary; explicit approval policy; audit |
 | Browser page / DNS-rebinding attacker | Can send requests with a forged Origin/Host | Origin check; loopback bind; MCP SDK DNS-rebinding protections where available |
-| Malicious workspace content | Can influence the agent through files/prompts | DSH sandbox/permissions; cwd allowlist; no automatic approval |
+| Malicious workspace content | Can influence the agent through files/prompts | DSH sandbox/permissions; cwd allowlist; no silent approval bypass |
 | Network attacker | Can reach a non-loopback bind | Explicit opt-in; token; TLS/reverse proxy; firewall |
 | Trace reader | Can see code/tool outputs | Token-protected; retention; no logging of transcripts |
 
@@ -69,11 +69,28 @@ The core release:
   path.
 - Uses `allow-once` only.
 - Audits every decision.
-- Never auto-approves.
+- The approval bridge never auto-approves. Opt-in Auto review is a separate reviewer
+  path that may allow a reviewed action; the bridge cannot override its denials.
 - Treats `host` (UI answerer) as experimental until session ownership is verified.
 
 An autonomous caller can self-approve if the operator grants it a token and `remote`
 mode. That is an explicit delegation of trust, not a hidden default.
+
+## 4.1 Permission presets and Auto review
+
+- A caller may select a DSH permission preset only when the operator lists it in
+  `agent.allowedPermissionPresets`; the default list is empty.
+- The operator may pin a default with `agent.permissionPreset`; it applies to every task
+  and is not caller-controlled.
+- `auto` is the Auto review preset: Full access plus a per-call reviewer. It requires the
+  Auto review layer; selecting it without that layer fails with
+  `permission_unavailable`.
+- Auto-review denials are delegated to host answerers, not to `interactions.mode:
+  'remote'`. The remote caller cannot approve around the reviewer. With no host answerer,
+  the denial fails closed.
+- Allowing other presets, especially `danger-full-access`, gives the caller a direct
+  sandbox escalation. Keep the allowlist to `auto` unless the deployment explicitly
+  trusts that caller with more.
 
 ## 5. cwd and workspace
 

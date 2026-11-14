@@ -66,6 +66,11 @@ interface EventContext {
   on?: (event: string, listener: (...args: never[]) => unknown) => unknown
 }
 
+interface DshPermissionPresetService {
+  readonly names?: readonly string[]
+  set(session: DshSession, name: string): void
+}
+
 interface DshContext {
   agents: {
     create(options: DshAgentCreateOptions): Promise<DshHandle>
@@ -118,6 +123,7 @@ export class DshTaskAdapter implements TaskAdapter {
     return [
       record.cwd,
       preset,
+      this.effectivePermissionPreset(record),
       provider === '' ? 'default' : provider,
       model === '' ? 'default' : model,
       reasoningEffort,
@@ -126,14 +132,20 @@ export class DshTaskAdapter implements TaskAdapter {
 
   async start(record: TaskRecord, hooks: RunHooks): Promise<AgentRun> {
     if (this.closing) throw new DomainError('internal', 'plugin is shutting down')
-    const allocation = await this.acquire(record, hooks)
+    const allocation = await this.acquire(record)
     const { entry, fromSeq } = allocation
     if (this.closing) {
       await this.disposeEntry(entry)
       throw new DomainError('internal', 'plugin is shutting down')
     }
+    try {
+      this.applyPermissionPreset(entry, record)
+    } catch (error) {
+      await this.disposeEntry(entry)
+      throw error
+    }
     const bridge = entry.bridge
-    bridge.beginTask(record.taskId, hooks)
+    bridge.beginTask(record.taskId, hooks, this.effectivePermissionPreset(record) === 'auto')
     try {
       await hooks.onSession(entry.sessionId, fromSeq)
     } catch (error) {
@@ -249,7 +261,7 @@ export class DshTaskAdapter implements TaskAdapter {
     this.activeRuns.clear()
   }
 
-  private async acquire(record: TaskRecord, hooks: RunHooks): Promise<Allocation> {
+  private async acquire(record: TaskRecord): Promise<Allocation> {
     if (record.sessionId !== undefined) return await this.acquireExplicit(record)
     const baseKey = this.poolKey(record)
     const key = record.sessionMode === 'fresh' ? `${baseKey}\u0000fresh:${record.taskId}` : baseKey
@@ -260,7 +272,6 @@ export class DshTaskAdapter implements TaskAdapter {
       if (reusable !== undefined && this.ctx.agents.get(reusable.sessionId) === reusable.agent) {
         reusable.refs += 1
         reusable.lastUsed = Date.now()
-        reusable.bridge.beginTask(record.taskId, hooks)
         return { entry: reusable, fromSeq: reusable.agent.session.seq }
       }
       if (reusable !== undefined) await this.disposeEntry(reusable)
@@ -503,6 +514,32 @@ export class DshTaskAdapter implements TaskAdapter {
     if (idle === undefined) return false
     await this.disposeEntry(idle)
     return true
+  }
+
+  private effectivePermissionPreset(record: TaskRecord): string {
+    return record.permissionPreset ?? this.config.agent.permissionPreset
+  }
+
+  private applyPermissionPreset(entry: PoolEntry, record: TaskRecord): void {
+    const name = this.effectivePermissionPreset(record)
+    if (name === '') return
+    const service = getService<DshPermissionPresetService>(this.ctx, 'permissionPresets')
+    if (service === undefined) {
+      throw new DomainError(
+        'permission_unavailable',
+        `permission preset "${name}" was requested, but this DSH profile has no permissionPresets service`,
+      )
+    }
+    try {
+      service.set(entry.agent.session, name)
+    } catch (error) {
+      const known = service.names === undefined || service.names.length === 0 ? '' : ` (known: ${service.names.join(', ')})`
+      throw new DomainError(
+        'permission_unavailable',
+        `could not apply permission preset "${name}": ${messageOf(error)}${known}`,
+        { cause: error },
+      )
+    }
   }
 
   private newBridge(sessionId: string): SessionInteractionBridge {

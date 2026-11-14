@@ -89,6 +89,23 @@ describe('MCP tools', () => {
     expect(structured(waited)).toMatchObject({ taskId, status: 'running' })
   })
 
+  it('accepts an allowed permission preset and rejects others', async () => {
+    const { client } = await setup({ agent: { allowedPermissionPresets: ['auto'] } })
+    const accepted = await client.callTool({
+      name: 'dsh_task_submit',
+      arguments: { task: 'auto', permissionPreset: 'auto' },
+    })
+    expect(structured(accepted)).toMatchObject({ status: 'queued', permissionPreset: 'auto' })
+
+    const rejected = await client.callTool({
+      name: 'dsh_task_submit',
+      arguments: { task: 'wide', permissionPreset: 'danger-full-access' },
+    })
+    expect((rejected as { isError?: boolean }).isError).toBe(true)
+    expect(text(rejected)).toContain('agent.allowedPermissionPresets')
+    expect(structured<{ error: { code: string } }>(rejected).error.code).toBe('permission_denied')
+  })
+
   it('runs a one-shot task and always exposes the taskId', async () => {
     const { h, client } = await setup()
     h.adapter.autoAnswer = 'Linux'

@@ -16,6 +16,7 @@ trace".
 | Trace | readable transcript, filters, pagination |
 | Results | final answer verbatim in `content`; minimal `TaskState` in `structuredContent` |
 | Security | local-first defaults; approval policy; cwd allowlist |
+| Permissions | per-task `permissionPreset` allowlist; Auto review routing |
 | Quality | unit/MCP/HTTP tests, CI, build from `src` |
 
 ## 2. Extensions (after core)

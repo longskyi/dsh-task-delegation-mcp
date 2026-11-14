@@ -56,6 +56,7 @@ interface ActivePending {
 export class SessionInteractionBridge {
   private currentTaskId: string | undefined
   private hooks: RunHooks | undefined
+  private autoReview = false
   private active: ActivePending | undefined
   private registered = false
   private readonly detachers: (() => void)[] = []
@@ -72,12 +73,13 @@ export class SessionInteractionBridge {
     return this.active?.requestId
   }
 
-  beginTask(taskId: string, hooks: RunHooks): void {
+  beginTask(taskId: string, hooks: RunHooks, autoReview = false): void {
     if (this.currentTaskId !== undefined && this.currentTaskId !== taskId) {
       this.cancelPending()
     }
     this.currentTaskId = taskId
     this.hooks = hooks
+    this.autoReview = autoReview
   }
 
   endTask(taskId: string): void {
@@ -85,6 +87,7 @@ export class SessionInteractionBridge {
     this.cancelPending()
     this.currentTaskId = undefined
     this.hooks = undefined
+    this.autoReview = false
   }
 
   /** Register on an agent-scoped context. Safe to call once. */
@@ -171,6 +174,11 @@ export class SessionInteractionBridge {
       hooks.onUnavailable('approval', 'approval is required but interactions.mode is "deny"')
       return 'unavailable'
     }
+    // Auto review is the guardrail for full access. Never hand its denials to
+    // the remote caller, who could otherwise override the reviewer. Delegate to
+    // later host answerers; with no answerer the approval fails closed.
+    if (this.autoReview) return await next()
+
     if (this.mode === 'host') {
       const outcome = await next()
       if (outcome === 'unavailable') {

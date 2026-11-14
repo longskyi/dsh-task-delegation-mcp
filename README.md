@@ -45,6 +45,7 @@ release work that remains.
 | Task queue, session pool, final-answer extraction | done |
 | Persistence, restart recovery, retention | done |
 | `waiting` + approval/user-question tools | done |
+| Caller-selected permission presets / Auto review | done |
 | Readable paginated trace | done |
 | Bearer auth, origin check, body limit, workspace roots | done |
 | Unit, MCP in-memory, HTTP, and fake-DSH integration tests | done |
@@ -71,7 +72,7 @@ release work that remains.
   DSH agent wrote it. While waiting it is a short hint naming the next tool and IDs. On an
   error it is a recovery hint.
 - `structuredContent` is minimal machine state: `taskId`, `status`, `sessionId`,
-  `queuePosition`, `blockedBy`, `progress`, `pending`, or `error`.
+  `permissionPreset`, `queuePosition`, `blockedBy`, `progress`, `pending`, or `error`.
 - `queued`, `running`, and `waiting` are normal states, not `isError` failures.
 - A wait timeout is a normal result, not an error. Its content names the effective wait and,
   when the requested value exceeded `interactions.maxWaitMs`, the configured cap.
@@ -193,6 +194,8 @@ interface Config {
   }
   agent?: {
     preset?: string            // default: standard
+    permissionPreset?: string  // default: inherit; e.g. "auto" for Auto review
+    allowedPermissionPresets?: string[] // default: []; caller-selectable presets
     provider?: string          // default: DSH agentDefaultModel
     model?: string             // default: DSH agentDefaultModel
     reasoningEffort?: string
@@ -223,11 +226,32 @@ interface Config {
 A non-loopback `host` without `authToken` is rejected at startup. `interactions.mode:
 'remote'` on a non-loopback bind must also be explicit; the safe default there is `deny`.
 
+### Auto review and caller-selected permission presets
+
+Delegated sessions inherit the host permission unless `agent.permissionPreset` is set.
+To let the MCP caller choose Auto review for a task, allow it explicitly:
+
+```yaml
+agent:
+  allowedPermissionPresets: ['auto']
+```
+
+Then pass it per task:
+
+```json
+{ "task": "Build outside the sandbox", "cwd": "/repo", "permissionPreset": "auto" }
+```
+
+`auto` selects DSH's Full access sandbox with per-call Auto review. It requires the
+`@deepseek-ai/dsh-experimental-auto-review` layer. Auto-review denials are delegated to
+host answerers, never to the remote caller, so the caller cannot approve around the
+reviewer. The caller-selectable list is empty by default; only allow presets you trust.
+
 ## Design
 
 - One execution primitive: a task. `dsh_agent_run` is only `submit + wait`.
 - Session allocation happens at execution start, never at submit.
-- Tasks sharing a `cwd`/preset/model pool key, or an explicit `sessionId`, are serialized.
+- Tasks sharing a `cwd`/preset/permissionPreset/model pool key, or an explicit `sessionId`, are serialized.
   New work queues with `blockedBy` and `queuePosition`; it is not rejected as "busy".
 - `waiting` covers both approval and user questions; `pending.kind` tells the caller which
   tool to use.
@@ -247,7 +271,7 @@ npm test            # vitest
 npm run check:lib   # rebuild and fail if committed lib/ is stale
 ```
 
-75 tests cover config validation, the task state machine, queue/locks, approval and question
+82 tests cover config validation, the task state machine, queue/locks, approval and question
 routing, persistence/recovery, trace formatting and pagination, MCP tool results, HTTP
 auth/origin/body limits, and a fake-DSH adapter. See
 [docs/spec/06-operations.md](docs/spec/06-operations.md) for the full matrix.
@@ -267,7 +291,8 @@ See [docs/compatibility.md](docs/compatibility.md),
 This server can execute code with the DSH host user's permissions. Keep it bound to
 loopback. If another process or user can reach the port, set a long random
 `http.authToken` and do not expose the port to the internet. Approval decisions are
-audited and never auto-approved. See [docs/security.md](docs/security.md).
+audited. The plugin itself never auto-approves; the opt-in Auto review preset may allow
+a reviewed action. See [docs/security.md](docs/security.md).
 
 ## License
 

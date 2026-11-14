@@ -96,6 +96,8 @@ export declare class DshTaskAdapter implements TaskAdapter {
     private flush;
     private reapIdle;
     private evictOneIfNeeded;
+    private effectivePermissionPreset;
+    private applyPermissionPreset;
     private newBridge;
     private resolveAgentOptions;
     private mountPreset;

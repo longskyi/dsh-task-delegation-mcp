@@ -13,6 +13,8 @@ interface Config {
   }
   agent?: {
     preset?: string            // default: standard
+    permissionPreset?: string  // default: inherit; e.g. "auto" for Auto review
+    allowedPermissionPresets?: string[] // default: []; caller-selectable presets
     provider?: string          // default: host agentDefaultModel
     model?: string             // default: host agentDefaultModel
     reasoningEffort?: string
@@ -52,6 +54,19 @@ Validation rules:
   defaults on a loopback bind, deny browser origins elsewhere"; an explicit empty array
   denies every browser Origin while still allowing requests without an Origin.
 
+### 1.1 Permission presets
+
+- `agent.permissionPreset` is applied to each delegated session after create/resume and
+  before its first turn; empty means inherit the host/session permission.
+- `agent.allowedPermissionPresets` is the caller-selectable allowlist. It defaults to
+  empty. A requested preset outside it fails the submit with `permission_denied`.
+- An unknown or unavailable preset (for example `auto` without the Auto review layer)
+  fails the task with `permission_unavailable`.
+- `auto` selects Full access plus per-call Auto review. Auto-review denials are delegated
+  to host answerers and are never exposed as remote approval requests.
+- The effective preset is part of the session pool key and is stored on the task record;
+  `TaskState` exposes it while queued/running/waiting.
+
 ## 2. Health
 
 `GET /healthz` (no auth):
@@ -74,8 +89,8 @@ It must not include prompts, task ids, or session ids.
 - Levels: `debug`, `info`, `warn`, `error`; default `info`.
 - Task lifecycle: `queued`, `started`, `waiting`, `resumed`, `succeeded`, `failed`,
   `canceled`, `interrupted`.
-- Fields: `taskId`, `sessionId`, `cwd`, `durationMs`, `errorCode`, `queueDepth`,
-  `agentPoolSize`.
+- Fields: `taskId`, `sessionId`, `cwd`, `permissionPreset`, `durationMs`, `errorCode`,
+  `queueDepth`, `agentPoolSize`.
 - Do not log prompts, tool arguments, file contents, final answers, tokens, or approval
   decisions' payloads.
 - Use stderr for `warn`/`error`; stdout is acceptable for normal lifecycle logs.

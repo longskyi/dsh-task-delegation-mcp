@@ -184,6 +184,8 @@ export class FakeDshContext {
   readonly created: unknown[] = []
   readonly resumed: unknown[] = []
   readonly mounts: string[] = []
+  readonly permissionSets: { sessionId: string; name: string }[] = []
+  permissionPresetsAvailable = true
   readonly persistence = new FakePersistence()
   modelSelection: { provider: string; model: string; reasoningEffort?: string } | undefined = {
     provider: 'deepseek-official',
@@ -251,7 +253,17 @@ export class FakeDshContext {
     },
   }
 
+  readonly permissionPresets = {
+    names: ['workspace-write', 'auto'],
+    set: (session: FakeSession, name: string) => {
+      if (name === 'missing') throw new Error('unknown preset')
+      this.permissionSets.push({ sessionId: session.id, name })
+      session.append('permission/preset', { preset: name })
+    },
+  }
+
   get(name: string): unknown {
+    if (name === 'permissionPresets') return this.permissionPresetsAvailable ? this.permissionPresets : undefined
     switch (name) {
       case 'agentDefaultModel':
         return { currentSelection: () => this.modelSelection }

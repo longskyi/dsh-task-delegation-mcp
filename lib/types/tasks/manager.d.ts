@@ -9,6 +9,7 @@ export interface SubmitInput {
     cwd?: string;
     sessionId?: string;
     sessionMode?: 'reuse' | 'fresh';
+    permissionPreset?: string;
     title?: string;
 }
 export interface WaitOptions {

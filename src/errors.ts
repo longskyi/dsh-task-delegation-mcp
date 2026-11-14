@@ -16,6 +16,8 @@ export type ErrorCode =
   | 'cwd_mismatch'
   | 'session_not_found'
   | 'agent_unavailable'
+  | 'permission_denied'
+  | 'permission_unavailable'
   | 'approval_required'
   | 'question_unavailable'
   | 'approval_timeout'

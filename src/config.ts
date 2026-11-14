@@ -22,6 +22,10 @@ export interface HttpConfig {
 export interface AgentConfig {
   /** DSH agent preset mounted for delegated sessions. */
   preset: string
+  /** DSH permission preset applied to delegated sessions; empty inherits. */
+  permissionPreset: string
+  /** Permission presets a task caller may request; empty disables caller selection. */
+  allowedPermissionPresets: string[]
   /** Provider override; empty follows DSH's default model selection. */
   provider: string
   /** Model override; empty follows DSH's default model selection. */
@@ -83,6 +87,20 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
 const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error']
 const INTERACTION_MODES: readonly InteractionMode[] = ['remote', 'deny', 'host']
 
+function stringList(value: unknown, field: string): string[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new Error(`${field} must be an array of non-empty strings`)
+  const result: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new Error(`${field} entries must be non-empty strings, got ${String(item)}`)
+    }
+    const trimmed = item.trim()
+    if (!result.includes(trimmed)) result.push(trimmed)
+  }
+  return result
+}
+
 /** Whether `host` only accepts local connections. */
 export function isLoopbackHost(host: string): boolean {
   return LOOPBACK_HOSTS.has(host)
@@ -115,6 +133,8 @@ export function resolveConfig(input: Config = {}): ResolvedConfig {
   const agentInput = input.agent ?? {}
   const agent: AgentConfig = {
     preset: nonEmpty(agentInput.preset, 'standard', 'agent.preset'),
+    permissionPreset: (agentInput.permissionPreset ?? '').trim(),
+    allowedPermissionPresets: stringList(agentInput.allowedPermissionPresets, 'agent.allowedPermissionPresets'),
     provider: (agentInput.provider ?? '').trim(),
     model: (agentInput.model ?? '').trim(),
     reasoningEffort: (agentInput.reasoningEffort ?? '').trim(),

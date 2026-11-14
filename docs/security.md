@@ -46,7 +46,8 @@ the DSH sandbox?
 
 - Loopback defaults to `interactions.mode = 'remote'`.
 - Non-loopback must opt in to `remote`; otherwise it uses `deny`.
-- Approval is one-shot (`allow-once`) or `reject`; there is no auto-approval and no
+- Approval through the bridge is one-shot (`allow-once`) or `reject`; the bridge never
+  auto-approves. Opt-in Auto review is a separate reviewer path and has no
   persistent grant.
 - Every decision is audited with `taskId`, `requestId`, kind, and decision. Payloads,
   prompts, and file contents are not logged.

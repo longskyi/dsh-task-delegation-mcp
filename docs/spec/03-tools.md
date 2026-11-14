@@ -37,6 +37,7 @@ interface TaskState {
   taskId: string
   status: TaskStatus
   sessionId?: string
+  permissionPreset?: string
   queuePosition?: number
   blockedBy?: string
   progress?: string
@@ -130,6 +131,7 @@ Description: "Enqueue a task for DSH and return its taskId immediately."
   cwd?: string
   sessionId?: string
   sessionMode?: 'reuse' | 'fresh'   // default: reuse
+  permissionPreset?: string          // e.g. "auto"; operator allowlist required
   title?: string
 }
 ```
@@ -137,6 +139,12 @@ Description: "Enqueue a task for DSH and return its taskId immediately."
 - `cwd` defaults to the plugin process cwd; it is canonicalized with `realpath`.
 - `sessionId` continues an existing session; `sessionMode` is ignored when it is set.
 - `title` names the DSH session for the UI.
+- `permissionPreset` is applied before the first turn. It must appear in the
+  operator-controlled `agent.allowedPermissionPresets`; otherwise the call fails with
+  `permission_denied`. An unknown/unavailable preset fails the task with
+  `permission_unavailable`.
+- `auto` requires the Auto review layer and runs with Full access plus per-call review.
+  Auto-review denials are never routed to the remote caller.
 - Returns `content`: `Task <taskId> queued.` (or `started` if a worker won immediately) and
   `structuredContent`: `TaskState`.
 - Queue full → tool error `busy`, no task created.
@@ -181,6 +189,7 @@ Description: "Submit a task and wait for it; convenience for one-shot delegation
   cwd?: string
   sessionId?: string
   sessionMode?: 'reuse' | 'fresh'
+  permissionPreset?: string
   title?: string
   timeoutMs?: number
 }
@@ -426,6 +435,8 @@ structuredContent: { taskId: 't_123', status: 'canceled', sessionId: 's_456' }
 | `cwd_mismatch` | session belongs to another cwd | "Session belongs to `<cwd>`. Pass that cwd or omit `sessionId`." |
 | `session_not_found` | no pooled/live/persisted session | "Omit `sessionId` to create/reuse a session, or check the id." |
 | `agent_unavailable` | no model/preset or creation failed | "Configure `agent.provider`/`agent.model` or DSH's default model, then retry." |
+| `permission_denied` | caller-requested preset is not in `agent.allowedPermissionPresets` | "Omit `permissionPreset` or use an operator-allowed preset." |
+| `permission_unavailable` | preset service/preset unavailable (e.g. `auto` without Auto review) | "Enable the DSH permission preset (and Auto review for `auto`), or omit `permissionPreset`." |
 | `approval_required` | approval needed but the mode cannot ask (`deny`, or `host` with no answerer) | "Approval is unavailable in the current host mode. Ask the operator to enable remote approval; this task cannot proceed." |
 | `question_unavailable` | question needed but the mode cannot ask | "User questions are unavailable in the current host mode. Ask the operator; this task cannot proceed." |
 | `approval_timeout` / `question_timeout` | pending TTL expired | "The request timed out. Call `dsh_task_get` for the final state." |

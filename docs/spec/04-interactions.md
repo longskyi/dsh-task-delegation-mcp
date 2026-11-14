@@ -87,6 +87,14 @@ pending created (status: waiting)
 | `deny` | Fail closed immediately; the task reports `approval_required` / `question_unavailable` | Strict/unattended deployments |
 | `host` | Delegate with `next()` to the DSH UI/host answerer | Experimental; requires verification that the host answers plugin-owned sessions |
 
+### Auto review
+
+A task with `permissionPreset: "auto"` is reviewed per tool call before execution. Its
+approval requests are not offered to `interactions.mode: 'remote'`; the bridge delegates
+them to later host answerers with `next()`. This prevents the remote caller from
+overriding an Auto review denial. With no host answerer, the denial fails closed. User
+questions still follow the configured interaction mode.
+
 ### Defaults
 
 - Loopback bind: `remote`.

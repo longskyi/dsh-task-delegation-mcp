@@ -33,6 +33,7 @@ export interface TaskState {
     taskId: string;
     status: TaskStatus;
     sessionId?: string;
+    permissionPreset?: string;
     queuePosition?: number;
     blockedBy?: string;
     progress?: string;
@@ -70,6 +71,7 @@ export interface TaskRecord {
     cwd: string;
     sessionMode: 'reuse' | 'fresh';
     preset: string;
+    permissionPreset?: string;
     provider?: string;
     model?: string;
     sessionId?: string;

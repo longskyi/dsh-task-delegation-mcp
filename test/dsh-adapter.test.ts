@@ -101,6 +101,59 @@ describe('DSH adapter', () => {
     expect(agent?.messages[0]?.content[0]?.text).not.toContain('one line JSON')
   })
 
+  it('applies a requested permission preset before the first turn', async () => {
+    const h = await setup({ agent: { allowedPermissionPresets: ['auto'] } }, (ctx) => {
+      ctx.onFollowup = (agent) => agent.complete('reviewed')
+    })
+    const record = await h.manager.submit({ task: 'outside sandbox', permissionPreset: 'auto' })
+    const finished = await h.manager.wait(record.taskId, { timeoutMs: 2_000 })
+    expect(finished.status).toBe('succeeded')
+    expect(finished.permissionPreset).toBe('auto')
+    expect(h.ctx.permissionSets).toEqual([{ sessionId: finished.sessionId, name: 'auto' }])
+    const agent = h.ctx.agentsById.get(finished.sessionId as string)
+    const types = agent?.session.events.map((event) => event.type) ?? []
+    expect(types.indexOf('permission/preset')).toBe(0)
+    expect(types.indexOf('permission/preset')).toBeLessThan(types.indexOf('user/message'))
+  })
+
+  it('keeps Auto review denials away from remote approval', async () => {
+    const h = await setup({ agent: { allowedPermissionPresets: ['auto'] } }, (ctx) => {
+      ctx.onFollowup = async (agent) => {
+        const outcome = await agent.requestApproval('bash', 'write outside the workspace')
+        agent.complete(`approval ${outcome}`)
+      }
+    })
+    const record = await h.manager.submit({ task: 'auto review', permissionPreset: 'auto' })
+    const finished = await h.manager.wait(record.taskId, { timeoutMs: 2_000 })
+    expect(finished.status).toBe('succeeded')
+    expect(finished.answer).toBe('approval unavailable')
+    expect(finished.pending).toBeUndefined()
+    const agent = h.ctx.agentsById.get(finished.sessionId as string)
+    expect(agent?.approvals).toEqual(['unavailable'])
+  })
+
+  it('reports a missing host permission preset service', async () => {
+    const h = await setup({ agent: { allowedPermissionPresets: ['auto'] } }, (ctx) => {
+      ctx.permissionPresetsAvailable = false
+      ctx.onFollowup = (agent) => agent.complete('should not run')
+    })
+    const record = await h.manager.submit({ task: 'auto without service', permissionPreset: 'auto' })
+    const finished = await h.manager.wait(record.taskId, { timeoutMs: 2_000 })
+    expect(finished.status).toBe('failed')
+    expect(finished.error).toMatchObject({ code: 'permission_unavailable' })
+    expect(finished.error?.message).toContain('no permissionPresets service')
+  })
+
+  it('reports an unknown permission preset as unavailable', async () => {
+    const h = await setup({ agent: { allowedPermissionPresets: ['missing'] } }, (ctx) => {
+      ctx.onFollowup = (agent) => agent.complete('should not run')
+    })
+    const record = await h.manager.submit({ task: 'bad preset', permissionPreset: 'missing' })
+    const finished = await h.manager.wait(record.taskId, { timeoutMs: 2_000 })
+    expect(finished.status).toBe('failed')
+    expect(finished.error).toMatchObject({ code: 'permission_unavailable' })
+  })
+
   it('preserves a final answer verbatim, including surrounding whitespace', async () => {
     const h = await setup({}, (ctx) => {
       ctx.onFollowup = (agent) => {

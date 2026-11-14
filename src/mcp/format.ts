@@ -150,6 +150,10 @@ function errorHint(error: DomainError): string {
       return `${clean}. Omit sessionId to create/reuse a session, or check the id.`
     case 'agent_unavailable':
       return `${clean}. Configure agent.provider/agent.model or DSH's default model, then retry.`
+    case 'permission_denied':
+      return `${clean}. Omit permissionPreset or use one allowed by agent.allowedPermissionPresets.`
+    case 'permission_unavailable':
+      return `${clean}. Enable that DSH permission preset (and Auto review for "auto"), or omit permissionPreset.`
     case 'approval_required':
       return `${clean}. Ask the operator to enable remote approval; this task cannot proceed.`
     case 'question_unavailable':
