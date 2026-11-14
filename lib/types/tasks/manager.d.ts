@@ -14,6 +14,11 @@ export interface SubmitInput {
 }
 export interface WaitOptions {
     timeoutMs?: number;
+    /**
+     * Stop waiting when the caller goes away. This only ends the wait; it never
+     * cancels the task. Use {@link TaskManager.cancel} for that.
+     */
+    signal?: AbortSignal;
 }
 export interface WaitOutcome extends WaitInfo {
     record: TaskRecord;

@@ -140,7 +140,7 @@ export function resolveConfig(input: Config = {}): ResolvedConfig {
     reasoningEffort: (agentInput.reasoningEffort ?? '').trim(),
     maxAgents: positiveInt(agentInput.maxAgents, 8, 'agent.maxAgents'),
     maxConcurrent: positiveInt(agentInput.maxConcurrent, 4, 'agent.maxConcurrent'),
-    defaultTimeoutMs: positiveInt(agentInput.defaultTimeoutMs, 600_000, 'agent.defaultTimeoutMs'),
+    defaultTimeoutMs: nonNegativeInt(agentInput.defaultTimeoutMs, 1_800_000, 'agent.defaultTimeoutMs'),
     defaultSyncWaitMs: nonNegativeInt(agentInput.defaultSyncWaitMs, 30_000, 'agent.defaultSyncWaitMs'),
     idleTtlMs: positiveInt(agentInput.idleTtlMs, 1_800_000, 'agent.idleTtlMs'),
     maxAnswerBytes: positiveInt(agentInput.maxAnswerBytes, 65_536, 'agent.maxAnswerBytes'),

@@ -41,6 +41,11 @@ export interface SubmitInput {
 
 export interface WaitOptions {
   timeoutMs?: number
+  /**
+   * Stop waiting when the caller goes away. This only ends the wait; it never
+   * cancels the task. Use {@link TaskManager.cancel} for that.
+   */
+  signal?: AbortSignal
 }
 
 export interface WaitOutcome extends WaitInfo {
@@ -274,17 +279,22 @@ export class TaskManager {
       capped: effectiveTimeoutMs < requestedTimeoutMs,
       maxWaitMs,
     }
+    const signal = options.signal
     if (isSettled(record.status)) return { ...wait, record }
+    if (signal?.aborted === true) return { ...wait, aborted: true, record }
     if (effectiveTimeoutMs === 0) return { ...wait, timedOut: true, record }
 
+    let aborted = false
     await new Promise<void>((resolveWait) => {
       const set = this.waiters.get(taskId) ?? new Set<() => void>()
       this.waiters.set(taskId, set)
       let finished = false
+      let onAbort: (() => void) | undefined
       const finish = (): void => {
         if (finished) return
         finished = true
         clearTimeout(timer)
+        if (onAbort !== undefined) signal?.removeEventListener('abort', onAbort)
         set.delete(wake)
         if (set.size === 0) this.waiters.delete(taskId)
         resolveWait()
@@ -294,11 +304,20 @@ export class TaskManager {
       }
       const timer = setTimeout(finish, effectiveTimeoutMs)
       timer.unref()
+      onAbort = (): void => {
+        aborted = true
+        finish()
+      }
+      signal?.addEventListener('abort', onAbort, { once: true })
       set.add(wake)
-      if (isSettled(this.requireTask(taskId).status)) finish()
+      if (signal?.aborted === true) onAbort()
+      else if (isSettled(this.requireTask(taskId).status)) finish()
     })
     const current = this.requireTask(taskId)
-    return { ...wait, timedOut: !isSettled(current.status), record: current }
+    if (aborted && !isSettled(current.status)) {
+      this.logger.debug('wait ended because the caller aborted; task continues', { taskId })
+    }
+    return { ...wait, timedOut: !isSettled(current.status), ...(aborted ? { aborted: true } : {}), record: current }
   }
 
   async cancel(taskId: string): Promise<CancelResult> {
@@ -633,8 +652,10 @@ export class TaskManager {
         await run.cancel(runtime.cancelRequested ?? 'shutdown')
       }
       const timeoutMs = this.config.agent.defaultTimeoutMs
-      runtime.timer = setTimeout(() => void this.timeoutTask(record, runtime).catch((error: unknown) => this.logger.error('task timeout handling failed', { taskId: record.taskId, error })), timeoutMs)
-      runtime.timer.unref()
+      if (timeoutMs > 0) {
+        runtime.timer = setTimeout(() => void this.timeoutTask(record, runtime).catch((error: unknown) => this.logger.error('task timeout handling failed', { taskId: record.taskId, error })), timeoutMs)
+        runtime.timer.unref()
+      }
 
       const result = await run.result
       if (runtime.timer !== undefined) clearTimeout(runtime.timer)

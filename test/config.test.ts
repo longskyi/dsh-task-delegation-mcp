@@ -13,7 +13,7 @@ describe('resolveConfig', () => {
     expect(config.agent.allowedPermissionPresets).toEqual([])
     expect(config.agent.maxAgents).toBe(8)
     expect(config.agent.maxConcurrent).toBe(4)
-    expect(config.agent.defaultTimeoutMs).toBe(600_000)
+    expect(config.agent.defaultTimeoutMs).toBe(1_800_000)
     expect(config.agent.defaultSyncWaitMs).toBe(30_000)
     expect(config.agent.idleTtlMs).toBe(1_800_000)
     expect(config.agent.maxAnswerBytes).toBe(65_536)
@@ -60,9 +60,10 @@ describe('resolveConfig', () => {
     expect(() => resolveConfig({ http: { maxBodyBytes: 0 } })).toThrow(/maxBodyBytes/)
   })
 
-  it('rejects a non-positive concurrency or timeout', () => {
+  it('rejects a non-positive concurrency and accepts a disabled task timeout', () => {
     expect(() => resolveConfig({ agent: { maxConcurrent: 0 } })).toThrow(/maxConcurrent/)
-    expect(() => resolveConfig({ agent: { defaultTimeoutMs: 0 } })).toThrow(/defaultTimeoutMs/)
+    expect(resolveConfig({ agent: { defaultTimeoutMs: 0 } }).agent.defaultTimeoutMs).toBe(0)
+    expect(() => resolveConfig({ agent: { defaultTimeoutMs: -1 } })).toThrow(/defaultTimeoutMs/)
     expect(() => resolveConfig({ tasks: { maxQueue: 0 } })).toThrow(/maxQueue/)
   })
 

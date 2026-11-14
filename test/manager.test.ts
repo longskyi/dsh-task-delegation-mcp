@@ -66,6 +66,34 @@ describe('task manager', () => {
     })
   })
 
+  it('stops waiting when the caller aborts without canceling the task', async () => {
+    const h = await setup({ agent: { defaultSyncWaitMs: 10_000 } })
+    const record = await h.manager.submit({ task: 'keep running' })
+    const run = await h.adapter.waitForRun(record.taskId)
+    const controller = new AbortController()
+    const waiting = h.manager.waitOutcome(record.taskId, {
+      timeoutMs: 10_000,
+      signal: controller.signal,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    controller.abort()
+    const outcome = await waiting
+    expect(outcome.aborted).toBe(true)
+    expect(outcome.record.status).toBe('running')
+    expect(run.cancelReason).toBeUndefined()
+    run.succeed('finished later')
+    expect((await h.manager.wait(record.taskId, { timeoutMs: 1_000 })).status).toBe('succeeded')
+  })
+
+  it('can disable the task watchdog with defaultTimeoutMs: 0', async () => {
+    const h = await setup({ agent: { defaultTimeoutMs: 0 } })
+    const record = await h.manager.submit({ task: 'slow' })
+    await h.adapter.waitForRun(record.taskId)
+    await new Promise((resolve) => setTimeout(resolve, 25))
+    expect(h.manager.get(record.taskId).status).toBe('running')
+    await h.manager.cancel(record.taskId)
+  })
+
   it('enforces the caller permission preset allowlist', async () => {
     const h = await setup({ agent: { allowedPermissionPresets: ['auto'] } })
     await expect(

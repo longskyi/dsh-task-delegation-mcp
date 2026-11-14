@@ -17,6 +17,10 @@ Core implementation of the task-delegation MCP server.
   verbatim in `content`; oversized answers are marked `[truncated]` and bounded by
   `agent.maxAnswerBytes`.
 - Progress strings, task timeout, cancellation, and restart recovery.
+- A caller abort/canceled MCP request ends only the wait; it never cancels the delegated
+  task. `dsh_task_cancel` remains the explicit stop signal.
+- The task watchdog defaults to 30 minutes (was 10), and `agent.defaultTimeoutMs: 0`
+  disables it entirely.
 
 ### Interactions
 
@@ -50,7 +54,7 @@ Core implementation of the task-delegation MCP server.
 - `content`/`structuredContent` contract: answer or actionable status in content, minimal
   state in structuredContent.
 - Full configuration, startup validation, workspace roots, graceful shutdown.
-- 84 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
+- 87 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
 
 ### Build
 

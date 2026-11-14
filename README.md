@@ -58,8 +58,8 @@ release work that remains.
 |---|---|
 | `dsh_task_submit` | Enqueue a task and return `taskId` immediately |
 | `dsh_task_get` | Read the current state without waiting |
-| `dsh_task_wait` | Wait for terminal, `waiting`, or timeout |
-| `dsh_agent_run` | `submit` + `wait`; always returns `taskId` |
+| `dsh_task_wait` | Wait for terminal, `waiting`, or timeout; a timeout or MCP abort does not cancel the task |
+| `dsh_agent_run` | `submit` + `wait`; a wait timeout or MCP abort leaves the task running |
 | `dsh_task_cancel` | Cancel a queued/running task or its pending interaction |
 | `dsh_task_list` | List recent task summaries |
 | `dsh_task_approve` | Decide a pending approval with `allow-once` or `reject` |
@@ -76,6 +76,8 @@ release work that remains.
 - `queued`, `running`, and `waiting` are normal states, not `isError` failures.
 - A wait timeout is a normal result, not an error. Its content names the effective wait and,
   when the requested value exceeded `interactions.maxWaitMs`, the configured cap.
+- Canceling the MCP request only stops the wait. The task keeps running; resume with
+  `dsh_task_get`/`dsh_task_wait`, or stop it explicitly with `dsh_task_cancel`.
 - An invalid approval/answer never mutates the pending request.
 
 Successful call:
@@ -201,7 +203,7 @@ interface Config {
     reasoningEffort?: string
     maxAgents?: number         // default: 8
     maxConcurrent?: number     // default: 4
-    defaultTimeoutMs?: number  // default: 600_000
+    defaultTimeoutMs?: number  // default: 1_800_000; 0 = no task watchdog
     defaultSyncWaitMs?: number // default: 30_000
     idleTtlMs?: number         // default: 1_800_000
     maxAnswerBytes?: number    // default: 65_536
@@ -225,6 +227,24 @@ interface Config {
 
 A non-loopback `host` without `authToken` is rejected at startup. `interactions.mode:
 'remote'` on a non-loopback bind must also be explicit; the safe default there is `deny`.
+
+### Timeouts and cancellation
+
+Three independent limits are easy to confuse:
+
+- `agent.defaultTimeoutMs` is the **task watchdog**. When it expires the task is canceled
+  and recorded as `failed` with `error.code: "timeout"`. The default is 30 minutes; set
+  `0` to disable it for long builds or GPU runs.
+- `interactions.maxWaitMs` caps one `dsh_task_wait`/`dsh_agent_run` **wait**. Its default is
+  30 minutes. A capped wait returns the still-running task, not an error.
+- The MCP client's own request timeout is a **transport limit**. Canceling or aborting the
+  request stops only the wait; the delegated task keeps running. This is intentional:
+  transport failures and client disconnects are not a request to discard work. Use
+  `dsh_task_cancel` to stop a task.
+
+`dsh_agent_run` is submit + wait. If the client timeout can fire before the task finishes,
+prefer `dsh_task_submit` (which returns `taskId` immediately) plus `dsh_task_wait`, so the
+id is known if a wait is aborted. `dsh_task_list` can also recover the id by `cwd`.
 
 ### Auto review and caller-selected permission presets
 
@@ -271,9 +291,9 @@ npm test            # vitest
 npm run check:lib   # rebuild and fail if committed lib/ is stale
 ```
 
-84 tests cover config validation, the task state machine, queue/locks, approval and question
-routing, persistence/recovery, trace formatting and pagination, MCP tool results, HTTP
-auth/origin/body limits, and a fake-DSH adapter. See
+87 tests cover config validation, the task state machine, queue/locks, approval and question
+routing, cancellation/abort semantics, persistence/recovery, trace formatting and
+pagination, MCP tool results, HTTP auth/origin/body limits, and a fake-DSH adapter. See
 [docs/spec/06-operations.md](docs/spec/06-operations.md) for the full matrix.
 
 ## Compatibility

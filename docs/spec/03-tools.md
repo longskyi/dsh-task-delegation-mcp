@@ -162,7 +162,7 @@ This is safe to call repeatedly; it never blocks.
 
 ### 4.3 `dsh_task_wait`
 
-Description: "Wait until a task finishes or needs approval/answer, or the timeout expires."
+Description: "Wait until a task finishes or needs approval/answer, or the timeout expires. A timeout or a canceled MCP request only ends the wait; the task keeps running."
 
 ```ts
 {
@@ -173,6 +173,8 @@ Description: "Wait until a task finishes or needs approval/answer, or the timeou
 
 - Returns early on `succeeded`, `failed`, `canceled`, `interrupted`, or `waiting`.
 - On timeout returns the current `running`/`queued` state; it is not an error.
+- Canceling the MCP request ends only the wait; it never cancels the task. The content
+  says the task continues. Use `dsh_task_cancel` for an explicit stop.
 - `content` on timeout: `Task <taskId> is still running: <progress>. Wait timed out after
   <effective> ms. Call dsh_task_wait again.`
 - When the requested wait exceeded `interactions.maxWaitMs`, content also names the
@@ -180,7 +182,7 @@ Description: "Wait until a task finishes or needs approval/answer, or the timeou
 
 ### 4.4 `dsh_agent_run`
 
-Description: "Submit a task and wait for it; convenience for one-shot delegation."
+Description: "Submit a task and wait for it; convenience for one-shot delegation. A wait timeout or a canceled MCP request does not cancel the task; use dsh_task_cancel for that."
 
 ```ts
 {
@@ -196,8 +198,11 @@ Description: "Submit a task and wait for it; convenience for one-shot delegation
 ```
 
 - Internally `dsh_task_submit` + `dsh_task_wait`.
-- It **always** returns the `taskId`, even when the wait times out.
+- When the call returns, it includes the `taskId`, even when the wait times out.
 - It is not a second execution path and creates no extra task beyond the one submitted.
+- If the MCP request is aborted, no result is delivered but the task keeps running; recover
+  its id with `dsh_task_list` or use `dsh_task_submit` first when long waits are expected.
+- A wait timeout or MCP abort never cancels the task; use `dsh_task_cancel` for that.
 - Do not call it again to continue the same task; use `dsh_task_get` / `dsh_task_wait`
   with the returned `taskId`.
 
@@ -369,7 +374,7 @@ structuredContent: { taskId: 't_123', status: 'running', sessionId: 's_456', pro
 ### 5.5 Failed / interrupted
 
 ```text
-Task t_123 failed: timeout after 600000 ms.
+Task t_123 failed: timeout after 1800000 ms.
 Call dsh_task_trace for the execution history.
 ```
 
@@ -378,7 +383,7 @@ structuredContent: {
   taskId: 't_123',
   status: 'failed',
   sessionId: 's_456',
-  error: { code: 'timeout', message: 'timeout after 600000 ms' }
+  error: { code: 'timeout', message: 'timeout after 1800000 ms' }
 }
 ```
 

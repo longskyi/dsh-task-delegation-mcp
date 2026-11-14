@@ -112,6 +112,8 @@ export interface TaskRecord {
 /** Why and how long a wait call actually waited. */
 export interface WaitInfo {
   timedOut: boolean
+  /** The caller stopped waiting; the task itself was not canceled. */
+  aborted?: boolean
   requestedTimeoutMs: number
   effectiveTimeoutMs: number
   capped: boolean

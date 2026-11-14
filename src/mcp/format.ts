@@ -74,6 +74,9 @@ export function success(record: TaskRecord, queue: QueueInfo = {}, wait?: WaitIn
 }
 
 function timeoutNote(wait: WaitInfo | undefined): string {
+  if (wait?.aborted === true) {
+    return ' The wait was canceled; the task continues. Call dsh_task_get or dsh_task_wait to resume.'
+  }
   if (wait?.timedOut !== true) return ''
   const capped = wait.capped
     ? ` (requested ${wait.requestedTimeoutMs} ms; capped by interactions.maxWaitMs=${wait.maxWaitMs})`

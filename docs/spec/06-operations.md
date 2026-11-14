@@ -20,7 +20,7 @@ interface Config {
     reasoningEffort?: string
     maxAgents?: number         // default: 8
     maxConcurrent?: number     // default: 4
-    defaultTimeoutMs?: number  // default: 600_000
+    defaultTimeoutMs?: number  // default: 1_800_000; 0 = no task watchdog
     defaultSyncWaitMs?: number // default: 30_000
     idleTtlMs?: number         // default: 1_800_000
     maxAnswerBytes?: number    // default: 65_536

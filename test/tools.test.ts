@@ -89,6 +89,26 @@ describe('MCP tools', () => {
     expect(structured(waited)).toMatchObject({ taskId, status: 'running' })
   })
 
+  it('does not cancel a task when the MCP request is aborted', async () => {
+    const { h, client } = await setup()
+    const submitted = await client.callTool({ name: 'dsh_task_submit', arguments: { task: 'keep running' } })
+    const taskId = structured<{ taskId: string }>(submitted).taskId
+    const run = await h.adapter.waitForRun(taskId)
+    const controller = new AbortController()
+    const waiting = client.callTool(
+      { name: 'dsh_task_wait', arguments: { taskId, timeoutMs: 10_000 } },
+      undefined,
+      { signal: controller.signal },
+    )
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    controller.abort()
+    await expect(waiting).rejects.toThrow()
+    expect(h.manager.get(taskId).status).toBe('running')
+    expect(run.cancelReason).toBeUndefined()
+    run.succeed('finished later')
+    await h.manager.wait(taskId, { timeoutMs: 1_000 })
+  })
+
   it('accepts an allowed permission preset and rejects others', async () => {
     const { client } = await setup({ agent: { allowedPermissionPresets: ['auto'] } })
     const accepted = await client.callTool({
