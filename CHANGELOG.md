@@ -25,6 +25,9 @@ Core implementation of the task-delegation MCP server.
 - `dsh_task_approve` and `dsh_task_answer`; invalid/wrong/expired decisions do not mutate
   the pending request.
 - `interactions.mode`: `remote`, `deny`, and experimental `host`.
+- Approval routing uses a prepended root listener filtered by agent identity. Sandbox
+  escalation approvals now reach the MCP caller before the Web host answerer, so
+  read-only → workspace-write returns `waiting` and `dsh_task_approve` resumes the task.
 - Per-task `permissionPreset` with an operator allowlist; `auto` selects DSH Auto review.
   Auto-review denials bypass remote approval and fail closed without a host answerer.
 - `interactions.maxWaitMs` defaults to 30 minutes; a wait timeout reports its effective
@@ -47,7 +50,7 @@ Core implementation of the task-delegation MCP server.
 - `content`/`structuredContent` contract: answer or actionable status in content, minimal
   state in structuredContent.
 - Full configuration, startup validation, workspace roots, graceful shutdown.
-- 82 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
+- 84 tests covering config, store, manager, adapter, bridge, trace, tools, and HTTP.
 
 ### Build
 

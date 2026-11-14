@@ -22,8 +22,11 @@ DSH exposes two Agent-scoped answerer waterfalls:
 - `approval/request` — one-shot approval for a sensitive tool action.
 - `user-questions/request` — a tool call paused for a human answer.
 
-The plugin registers listeners in the agent's `setup` scope. For each session it keeps a
-`SessionInteractions` bridge:
+The plugin registers a **prepended** listener on the plugin root context and filters each
+request by `request.agent.id` / `request.agent.session.id`. The prepend matters: the Web
+host answerer is also a listener, and if it claims a sandbox-escalation approval first the
+plugin task would keep running without a `waiting` state. For each session the plugin
+keeps a `SessionInteractions` bridge:
 
 ```ts
 interface SessionInteractions {
@@ -50,11 +53,10 @@ interface SessionInteractions {
 
 ### Live sessions
 
-For an agent created or resumed by the plugin, `setup` registers the listeners. For a
-live session owned by the UI or another plugin, the plugin may be able to register on the
-agent's scoped context when it takes the lease. If it cannot, approvals/questions from
-that session are delegated with `next()` or fail closed; the task is not allowed to hang
-silently.
+The root listener is installed when the plugin builds the session bridge, including for
+a live session owned by the UI or another plugin; the agent filter keeps it scoped to that
+session. If no matching agent id is present, the request is delegated with `next()` rather
+than claimed.
 
 ## 3. Pending lifecycle
 

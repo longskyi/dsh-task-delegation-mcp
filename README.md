@@ -271,7 +271,7 @@ npm test            # vitest
 npm run check:lib   # rebuild and fail if committed lib/ is stale
 ```
 
-82 tests cover config validation, the task state machine, queue/locks, approval and question
+84 tests cover config validation, the task state machine, queue/locks, approval and question
 routing, persistence/recovery, trace formatting and pagination, MCP tool results, HTTP
 auth/origin/body limits, and a fake-DSH adapter. See
 [docs/spec/06-operations.md](docs/spec/06-operations.md) for the full matrix.

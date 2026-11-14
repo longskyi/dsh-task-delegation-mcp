@@ -202,7 +202,7 @@ export class FakeDshContext {
       sessionId: string
       meta: { cwd: string; agentPreset: string }
       agentOptions: Record<string, unknown>
-      setup: (ctx: FakeAgent['ctx']) => Promise<void>
+      setup: (ctx: FakeAgent['ctx'], agent: FakeAgent) => Promise<void>
     }) => {
       if (this.createGate !== undefined) await this.createGate
       if (this.failCreate !== undefined) throw this.failCreate
@@ -211,7 +211,7 @@ export class FakeDshContext {
       agent.script.onFollowup = this.onFollowup
       this.agentsById.set(agent.id, agent)
       this.persistence.sessions.set(agent.id, { header: agent.session.header, events: agent.session.events })
-      await options.setup(agent.ctx)
+      await options.setup(agent.ctx, agent)
       return {
         agent,
         dispose: async () => {
@@ -223,7 +223,7 @@ export class FakeDshContext {
     resume: async (options: {
       resumeSessionId: string
       agentOptions: Record<string, unknown>
-      setup: (ctx: FakeAgent['ctx']) => Promise<void>
+      setup: (ctx: FakeAgent['ctx'], agent: FakeAgent) => Promise<void>
     }) => {
       if (this.failResume !== undefined) throw this.failResume
       this.resumed.push(options)
@@ -233,7 +233,7 @@ export class FakeDshContext {
       const agent = new FakeAgent(options.resumeSessionId, stored.header.cwd ?? this.persistCwd)
       agent.script.onFollowup = this.onFollowup
       this.agentsById.set(agent.id, agent)
-      await options.setup(agent.ctx)
+      await options.setup(agent.ctx, agent)
       return {
         agent,
         dispose: async () => {

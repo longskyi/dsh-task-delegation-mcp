@@ -66,9 +66,12 @@ http-server ──► McpServer (one per transport session)
 
 ## Interactions
 
-`SessionInteractionBridge` is registered on the agent-scoped context during `setup`.
-It claims `approval/request` and `user-questions/request` only while a plugin task owns
-the session. Otherwise it calls `next()` so the host/UI can answer.
+`SessionInteractionBridge` registers a prepended listener on the plugin root context and
+filters requests by the agent identity. Prepend is required because the Web host answerer
+also listens: otherwise it can claim a sandbox-escalation approval first, leaving the task
+running with no pending request. The bridge claims `approval/request` and
+`user-questions/request` only while a plugin task owns the session; otherwise it calls
+`next()` so the host/UI can answer.
 
 - `remote`: create a pending request, transition to `waiting`, and resolve it from
   `dsh_task_approve` / `dsh_task_answer`.

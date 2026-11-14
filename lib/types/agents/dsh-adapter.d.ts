@@ -48,17 +48,21 @@ interface DshAgentCreateOptions {
         agentPreset: string;
     };
     agentOptions: Record<string, unknown>;
-    setup: (agentCtx: EventContext) => Promise<void>;
+    setup: (agentCtx: EventContext, agent: DshAgent) => Promise<void>;
 }
 interface DshAgentResumeOptions {
     resumeSessionId: string;
     agentOptions: Record<string, unknown>;
-    setup: (agentCtx: EventContext) => Promise<void>;
+    setup: (agentCtx: EventContext, agent: DshAgent) => Promise<void>;
 }
 interface EventContext {
     on?: (event: string, listener: (...args: never[]) => unknown) => unknown;
 }
 interface DshContext {
+    on?: (event: string, listener: (...args: never[]) => unknown) => unknown;
+    root?: {
+        on?: (event: string, listener: (...args: never[]) => unknown) => unknown;
+    };
     agents: {
         create(options: DshAgentCreateOptions): Promise<DshHandle>;
         resume(options: DshAgentResumeOptions): Promise<DshHandle>;
@@ -98,6 +102,7 @@ export declare class DshTaskAdapter implements TaskAdapter {
     private evictOneIfNeeded;
     private effectivePermissionPreset;
     private applyPermissionPreset;
+    private registerBridge;
     private newBridge;
     private resolveAgentOptions;
     private mountPreset;

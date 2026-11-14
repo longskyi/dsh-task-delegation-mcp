@@ -53,13 +53,13 @@ interface DshAgentCreateOptions {
   sessionId: string
   meta: { cwd: string; agentPreset: string }
   agentOptions: Record<string, unknown>
-  setup: (agentCtx: EventContext) => Promise<void>
+  setup: (agentCtx: EventContext, agent: DshAgent) => Promise<void>
 }
 
 interface DshAgentResumeOptions {
   resumeSessionId: string
   agentOptions: Record<string, unknown>
-  setup: (agentCtx: EventContext) => Promise<void>
+  setup: (agentCtx: EventContext, agent: DshAgent) => Promise<void>
 }
 
 interface EventContext {
@@ -72,6 +72,8 @@ interface DshPermissionPresetService {
 }
 
 interface DshContext {
+  on?: (event: string, listener: (...args: never[]) => unknown) => unknown
+  root?: { on?: (event: string, listener: (...args: never[]) => unknown) => unknown }
   agents: {
     create(options: DshAgentCreateOptions): Promise<DshHandle>
     resume(options: DshAgentResumeOptions): Promise<DshHandle>
@@ -299,7 +301,7 @@ export class DshTaskAdapter implements TaskAdapter {
     if (live !== undefined) {
       await this.assertCwd(record, live.session.header.cwd)
       const bridge = this.newBridge(sessionId)
-      bridge.register(live.ctx ?? {})
+      this.registerBridge(bridge, live.ctx ?? {})
       const entry: PoolEntry = {
         sessionId,
         handle: { agent: live, dispose: async () => undefined },
@@ -326,8 +328,8 @@ export class DshTaskAdapter implements TaskAdapter {
       handle = await this.ctx.agents.resume({
         resumeSessionId: sessionId,
         agentOptions: route,
-        setup: async (agentCtx) => {
-          bridge.register(agentCtx)
+        setup: async (agentCtx, agent) => {
+          this.registerBridge(bridge, agent.ctx ?? agentCtx)
           await this.mountPreset(agentCtx)
         },
       })
@@ -375,8 +377,8 @@ export class DshTaskAdapter implements TaskAdapter {
         sessionId,
         meta: { cwd: record.cwd, agentPreset: this.config.agent.preset },
         agentOptions: route,
-        setup: async (agentCtx) => {
-          bridge.register(agentCtx)
+        setup: async (agentCtx, agent) => {
+          this.registerBridge(bridge, agent.ctx ?? agentCtx)
           await this.mountPreset(agentCtx)
         },
       })
@@ -539,6 +541,15 @@ export class DshTaskAdapter implements TaskAdapter {
         `could not apply permission preset "${name}": ${messageOf(error)}${known}`,
         { cause: error },
       )
+    }
+  }
+
+  private registerBridge(bridge: SessionInteractionBridge, agentCtx: EventContext): void {
+    const root = this.ctx.root
+    if (root !== undefined && typeof root.on === 'function') {
+      bridge.register(root as EventContext, true)
+    } else {
+      bridge.register(agentCtx)
     }
   }
 

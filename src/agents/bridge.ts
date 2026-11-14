@@ -7,6 +7,7 @@ import type { AnswerItem, PendingResponder, RunHooks } from './types.js'
 type ApprovalOutcome = 'allowed-once' | 'rejected' | 'cancelled' | 'unavailable'
 
 interface ApprovalRequest {
+  agent?: { id?: string; session?: { id?: string } }
   toolName?: string
   reason?: string
   displayReason?: Record<string, string>
@@ -26,6 +27,7 @@ interface QuestionItem {
 }
 
 interface QuestionRequest {
+  agent?: { id?: string; session?: { id?: string } }
   questions?: QuestionItem[]
   signal?: AbortSignal
 }
@@ -35,7 +37,11 @@ interface QuestionAnswer {
 }
 
 interface EventContext {
-  on?: (event: string, listener: (...args: never[]) => unknown) => unknown
+  on?: (
+    event: string,
+    listener: (...args: never[]) => unknown,
+    options?: { prepend?: boolean },
+  ) => unknown
 }
 
 interface ActivePending {
@@ -57,6 +63,7 @@ export class SessionInteractionBridge {
   private currentTaskId: string | undefined
   private hooks: RunHooks | undefined
   private autoReview = false
+  private requireAgentMatch = false
   private active: ActivePending | undefined
   private registered = false
   private readonly detachers: (() => void)[] = []
@@ -90,18 +97,24 @@ export class SessionInteractionBridge {
     this.autoReview = false
   }
 
-  /** Register on an agent-scoped context. Safe to call once. */
-  register(ctx: EventContext): void {
+  /**
+   * Register approval/question routing. Register on the plugin root when its
+   * events are globally visible and pass `requireAgentMatch`; otherwise use the
+   * agent-scoped context, which already filters by agent.
+   */
+  register(ctx: EventContext, requireAgentMatch = false): void {
     if (this.registered) return
     this.registered = true
+    this.requireAgentMatch = requireAgentMatch
     if (typeof ctx.on !== 'function') {
       this.logger.warn('agent context has no event API; interactions will fail closed', {
         sessionId: this.sessionId,
       })
       return
     }
-    this.listen(ctx, 'approval/request', (request, next) => this.handleApproval(request, next))
-    this.listen(ctx, 'user-questions/request', (request, next) => this.handleQuestion(request, next))
+    const options = requireAgentMatch ? { prepend: true } : undefined
+    this.listen(ctx, 'approval/request', (request, next) => this.handleApproval(request, next), options)
+    this.listen(ctx, 'user-questions/request', (request, next) => this.handleQuestion(request, next), options)
   }
 
   /** Resolve the active approval/question. Returns false when nothing matched. */
@@ -157,12 +170,19 @@ export class SessionInteractionBridge {
     ctx: EventContext,
     event: string,
     handler: (...args: never[]) => unknown,
+    options?: { prepend?: boolean },
   ): void {
-    const result = ctx.on?.(event, handler as (...args: never[]) => unknown)
+    const result = ctx.on?.(event, handler as (...args: never[]) => unknown, options)
     if (typeof result === 'function') this.detachers.push(result as () => void)
   }
 
+  private matchesSession(request: { agent?: { id?: string; session?: { id?: string } } }): boolean {
+    if (!this.requireAgentMatch) return true
+    return request.agent?.id === this.sessionId || request.agent?.session?.id === this.sessionId
+  }
+
   private async handleApproval(request: ApprovalRequest, next: () => Promise<ApprovalOutcome>): Promise<ApprovalOutcome> {
+    if (!this.matchesSession(request)) return next()
     const taskId = this.currentTaskId
     const hooks = this.hooks
     if (taskId === undefined || hooks === undefined) return next()
@@ -227,6 +247,7 @@ export class SessionInteractionBridge {
   }
 
   private async handleQuestion(request: QuestionRequest, next: () => Promise<QuestionAnswer>): Promise<QuestionAnswer> {
+    if (!this.matchesSession(request)) return next()
     const taskId = this.currentTaskId
     const hooks = this.hooks
     if (taskId === undefined || hooks === undefined) return next()
