@@ -19,12 +19,14 @@ structured.
 
 - One execution primitive: a **task**.
 - `dsh_task_submit` enqueues a task and returns its `taskId` immediately.
-- `dsh_agent_run` is the `submit + wait` convenience; it always returns the `taskId`.
+- `dsh_agent_run` is the `submit + wait` convenience; when the call returns, it includes
+  the `taskId`.
 - `dsh_task_get` reads the current state instantly. `dsh_task_wait` blocks until the
   task reaches a terminal state, becomes `waiting`, or the timeout expires.
 - Sessions are allocated **at execution start**, not at submit. Without `sessionId`, the
-  pool key is `cwd + preset + provider + model + reasoningEffort`; an idle session is reused, otherwise one
-  is created. `sessionMode: 'fresh'` forces a new session.
+  pool key is `cwd + preset + permissionPreset + provider + model + reasoningEffort`; an
+  idle session is reused, otherwise one is created. `sessionMode: 'fresh'` forces a new
+  session.
 - On success, `content` is the DSH agent's final answer **verbatim** — a complete
   document or a single sentence. It is never wrapped in JSON.
 - `structuredContent` is a minimal `TaskState`: `taskId`, `status`, `sessionId`,

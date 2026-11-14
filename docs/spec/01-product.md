@@ -53,8 +53,9 @@ Every execution is a task. `dsh_agent_run` is not a second execution path; it is
 
 ### 5.3 Session reuse is the default
 
-A task without `sessionId` reuses the pooled session for its `cwd + preset + provider +
-model`, or creates one. `sessionMode: 'fresh'` is the explicit isolation escape hatch.
+A task without `sessionId` reuses the pooled session for its `cwd + preset +
+permissionPreset + provider + model`, or creates one. `sessionMode: 'fresh'` is the
+explicit isolation escape hatch.
 
 ### 5.4 Interactions are explicit
 
@@ -129,7 +130,7 @@ these capabilities.
 | Session | A DSH session, reusable across tasks |
 | Task | One unit of work with a `taskId`, persisted |
 | Lease | Exclusive use of one agent session by one task |
-| Pool key | `cwd + preset + provider + model + reasoningEffort` |
+| Pool key | `cwd + preset + permissionPreset + provider + model + reasoningEffort` |
 | `TaskState` | The minimal machine state in `structuredContent` |
 | `TaskSummary` | The compact item returned by `dsh_task_list` |
 | Trace | The task-scoped, readable execution transcript |
